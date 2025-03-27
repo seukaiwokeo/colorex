@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22.0'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64
+      
+      - name: Build for Windows
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: 1
+          CC: x86_64-w64-mingw32-gcc
+        run: |
+          go mod tidy
+          go build -v -ldflags "-H=windowsgui -s -w" -o colorex-windows.exe
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            colorex-windows.exe
